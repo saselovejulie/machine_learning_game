@@ -1,16 +1,16 @@
-from pacman_game import pacman
-from pacman_game import pacman_utils as pac_utils
-import time
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
+
+from pacman_game import pacman_utils as pac_utils
+from pacman_game import pacman
+import time
 
 pacman_game = pacman.PacMan()
 pacman_game.start_game()
 
 while True:
-    result, x_t1_colored = pacman_game.next_step(pac_utils.PacManActions.NOTHING)
-    # time.sleep(3)
+    result, x_t1_colored, reward = pacman_game.next_step(pac_utils.PacManActions.NOTHING)
+    # time.sleep(1)
     if result:
         pacman_game = pacman.PacMan()
         pacman_game.start_game()

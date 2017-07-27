@@ -137,27 +137,43 @@ class Player(pygame.sprite.Sprite):
 
 # inheritime Player klassist
 class Ghost(Player):
+    def __init__(self, x, y, filename, move_list, ghost):
+        Player.__init__(self, x, y, filename)
+        self.list = move_list
+        self.ghost = ghost
+        self.turn = 0
+        self.steps = 0
+        self.l = len(move_list) - 1
+
     # Change the speed of the ghost
-    def changespeed(self, list, ghost, turn, steps, l):
+    def change_speed(self, not_update=False):
+        backup_turn = self.turn
+        backup_steps = self.steps
         try:
-            z = list[turn][2]
-            if steps < z:
-                self.change_x = list[turn][0]
-                self.change_y = list[turn][1]
-                steps += 1
+            z = self.list[self.turn][2]
+            if self.steps < z:
+                self.change_x = self.list[self.turn][0]
+                self.change_y = self.list[self.turn][1]
+                self.steps += 1
             else:
-                if turn < l:
-                    turn += 1
-                elif ghost == "clyde":
-                    turn = 2
+                if self.turn < self.l:
+                    self.turn += 1
+                elif self.ghost == "clyde":
+                    self.turn = 2
                 else:
-                    turn = 0
-                self.change_x = list[turn][0]
-                self.change_y = list[turn][1]
-                steps = 0
-            return [turn, steps]
+                    self.turn = 0
+                self.change_x = self.list[self.turn][0]
+                self.change_y = self.list[self.turn][1]
+                self.steps = 0
+
+            if not_update:
+                self.turn = backup_turn
+                self.steps = backup_steps
+
         except IndexError:
-            return [0, 0]
+            print("IndexError!!")
+            self.turn = 0
+            self.steps = 0
 
 
 # This creates all the walls in room 1
@@ -188,10 +204,6 @@ def setup_gate(all_sprites_list):
 class PacMan:
     def __init__(self):
         self.trollIcon = pygame.image.load('images/Trollman.png')
-        self.pl = len(pacman_utils.pinky_directions) - 1
-        self.bl = len(pacman_utils.blinky_directions) - 1
-        self.il = len(pacman_utils.inky_directions) - 1
-        self.cl = len(pacman_utils.clyde_directions) - 1
 
         # Call this function so the Pygame library can initialize itself
         pygame.init()
@@ -219,7 +231,7 @@ class PacMan:
         pygame.font.init()
         self.font = pygame.font.Font("freesansbold.ttf", 24)
 
-        # default locations for Pacman and monstas
+        # default locations for Pacman and monsters
         self.w = 303 - 16  # Width
         self.p_h = (7 * 60) + 19  # Pacman height
         self.m_h = (4 * 60) + 19  # Monster height
@@ -229,44 +241,32 @@ class PacMan:
 
         self.all_sprites_list = pygame.sprite.RenderPlain()
         self.block_list = pygame.sprite.RenderPlain()
-        self.monsta_list = pygame.sprite.RenderPlain()
+        self.monster_list = pygame.sprite.RenderPlain()
         self.pacman_collide = pygame.sprite.RenderPlain()
 
         self.wall_list = setup_room_one(self.all_sprites_list)
 
         self.gate = setup_gate(self.all_sprites_list)
 
-        self.p_turn = 0
-        self.p_steps = 0
-
-        self.b_turn = 0
-        self.b_steps = 0
-
-        self.i_turn = 0
-        self.i_steps = 0
-
-        self.c_turn = 0
-        self.c_steps = 0
-
         # Create the player paddle object
-        self.pacman = Player(self. w, self.p_h, "images/Trollman.png" )
+        self.pacman = Player(self.w, self.p_h, "images/Trollman.png")
         self.all_sprites_list.add(self.pacman)
         self.pacman_collide.add(self.pacman)
 
-        self.blinky = Ghost(self. w, self.b_h, "images/Blinky.png" )
-        self.monsta_list.add(self.blinky)
+        self.blinky = Ghost(self.w, self.b_h, "images/Blinky.png", pacman_utils.blinky_directions, False)
+        self.monster_list.add(self.blinky)
         self.all_sprites_list.add(self.blinky)
 
-        self.pinky = Ghost(self. w, self.m_h, "images/Pinky.png" )
-        self.monsta_list.add(self.pinky)
+        self.pinky = Ghost(self.w, self.m_h, "images/Pinky.png", pacman_utils.pinky_directions, False)
+        self.monster_list.add(self.pinky)
         self.all_sprites_list.add(self.pinky)
 
-        self.inky = Ghost(self.i_w, self.m_h, "images/Inky.png" )
-        self.monsta_list.add(self.inky)
+        self.inky = Ghost(self.i_w, self.m_h, "images/Inky.png", pacman_utils.inky_directions, False)
+        self.monster_list.add(self.inky)
         self.all_sprites_list.add(self.inky)
 
-        self.clyde = Ghost(self.c_w, self.m_h, "images/Clyde.png" )
-        self.monsta_list.add(self.clyde)
+        self.clyde = Ghost(self.c_w, self.m_h, "images/Clyde.png", pacman_utils.clyde_directions, "clyde")
+        self.monster_list.add(self.clyde)
         self.all_sprites_list.add(self.clyde)
 
         self.bll = 0
@@ -305,6 +305,13 @@ class PacMan:
         self.bll = len(self.block_list)
 
     def next_step(self, action):
+
+        # 奖励机制
+        reward = 0.1
+
+        # 游戏结束标识
+        game_over = False
+
         # ALL EVENT PROCESSING SHOULD GO BELOW THIS COMMENT
         if action == pacman_utils.PacManActions.LEFT:
             self.pacman.reset_speed(-30, 0)
@@ -322,28 +329,20 @@ class PacMan:
         # ALL GAME LOGIC SHOULD GO BELOW THIS COMMENT
         self.pacman.update(self.wall_list, self.gate)
 
-        returned = self.pinky.changespeed(pacman_utils.pinky_directions, False, self.p_turn, self.p_steps, self.pl)
-        self.p_turn = returned[0]
-        self.p_steps = returned[1]
-        self.pinky.changespeed(pacman_utils.pinky_directions, False, self.p_turn, self.p_steps, self.pl)
+        self.pinky.change_speed()
+        self.pinky.change_speed(True)
         self.pinky.update(self.wall_list, False)
 
-        returned = self.blinky.changespeed(pacman_utils.blinky_directions, False, self.b_turn, self.b_steps, self.bl)
-        self.b_turn = returned[0]
-        self.b_steps = returned[1]
-        self.blinky.changespeed(pacman_utils.blinky_directions, False, self.b_turn, self.b_steps, self.bl)
+        self.blinky.change_speed()
+        self.blinky.change_speed(True)
         self.blinky.update(self.wall_list, False)
 
-        returned = self.inky.changespeed(pacman_utils.inky_directions, False, self.i_turn, self.i_steps, self.il)
-        self.i_turn = returned[0]
-        self.i_steps = returned[1]
-        self.inky.changespeed(pacman_utils.inky_directions, False, self.i_turn, self.i_steps, self.il)
+        self.inky.change_speed()
+        self.inky.change_speed(True)
         self.inky.update(self.wall_list, False)
 
-        returned = self.clyde.changespeed(pacman_utils.clyde_directions, "clyde", self.c_turn, self.c_steps, self.cl)
-        self.c_turn = returned[0]
-        self.c_steps = returned[1]
-        self.clyde.changespeed(pacman_utils.clyde_directions, "clyde", self.c_turn, self.c_steps, self.cl)
+        self.clyde.change_speed()
+        self.clyde.change_speed(True)
         self.clyde.update(self.wall_list, False)
 
         # See if the Pacman block has collided with anything.
@@ -351,17 +350,20 @@ class PacMan:
 
         # Check the list of collisions.
         if len(blocks_hit_list) > 0:
-            self.score += len(blocks_hit_list)
+            get_score = len(blocks_hit_list)
+            self.score += get_score
+            # 吃到豆子reward增加
+            if get_score > 0:
+                reward = 1
 
         # ALL GAME LOGIC SHOULD GO ABOVE THIS COMMENT
-
         # ALL CODE TO DRAW SHOULD GO BELOW THIS COMMENT
         self.screen.fill(black)
 
         self.wall_list.draw(self.screen)
         self.gate.draw(self.screen)
         self.all_sprites_list.draw(self.screen)
-        self.monsta_list.draw(self.screen)
+        self.monster_list.draw(self.screen)
 
         text = self.font.render("Score: "+str(self.score)+"/"+str(self.bll), True, red)
         self.screen.blit(text, [10, 10])
@@ -369,17 +371,18 @@ class PacMan:
         image_data = pygame.surfarray.array3d(pygame.display.get_surface())
 
         if self.score == self.bll:
-            return True, image_data
+            game_over = True
 
-        monsta_hit_list = pygame.sprite.spritecollide(self.pacman, self.monsta_list, False)
+        monster_hit_list = pygame.sprite.spritecollide(self.pacman, self.monster_list, False)
 
-        if monsta_hit_list:
-            return True, image_data
+        if monster_hit_list:
+            # 碰到怪物, reward降低, 游戏结束
+            reward = -1
+            game_over = True
 
         # ALL CODE TO DRAW SHOULD GO ABOVE THIS COMMENT
-
         pygame.display.flip()
 
         self.clock.tick(10)
 
-        return False, image_data
+        return game_over, image_data, reward
