@@ -2,11 +2,24 @@ from enum import Enum
 
 
 class PacManActions(Enum):
-    NOTHING = 0
-    UP = 1
-    DOWN = 2
-    LEFT = 3
-    RIGHT = 4
+    UP = 0
+    DOWN = 1
+    LEFT = 2
+    RIGHT = 3
+    NOTHING = 4
+
+
+def get_action_from_array(action):
+    if action[0] == 1:
+        return PacManActions.UP
+    elif action[1] == 1:
+        return PacManActions.DOWN
+    elif action[2] == 1:
+        return PacManActions.LEFT
+    elif action[3] == 1:
+        return PacManActions.RIGHT
+    elif action[4] == 1:
+        return PacManActions.NOTHING
 
 walls = [[0, 0, 6, 600],
          [0, 0, 600, 6],

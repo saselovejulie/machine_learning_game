@@ -103,9 +103,11 @@ class Player(pygame.sprite.Sprite):
 
         # Did this update cause us to hit a wall?
         x_collide = pygame.sprite.spritecollide(self, walls, False)
+        hits = False
         if x_collide:
             # Whoops, hit a wall. Go back to the old position
             self.rect.left = old_x
+            hits = True
             # self.rect.top=prev_y
             # y_collide = pygame.sprite.spritecollide(self, walls, False)
             # if y_collide:
@@ -121,6 +123,7 @@ class Player(pygame.sprite.Sprite):
             if y_collide:
                 # Whoops, hit a wall. Go back to the old position
                 self.rect.top = old_y
+                hits = True
                 # self.rect.left=prev_x
                 # x_collide = pygame.sprite.spritecollide(self, walls, False)
                 # if x_collide:
@@ -131,8 +134,11 @@ class Player(pygame.sprite.Sprite):
         if gate is not False:
             gate_hit = pygame.sprite.spritecollide(self, gate, False)
             if gate_hit:
+                hits = True
                 self.rect.left = old_x
                 self.rect.top = old_y
+
+        return hits
 
 
 # inheritime Player klassist
@@ -203,7 +209,7 @@ def setup_gate(all_sprites_list):
 
 class PacMan:
     def __init__(self):
-        self.trollIcon = pygame.image.load('images/Trollman.png')
+        self.trollIcon = pygame.image.load('resources/images/Trollman.png')
 
         # Call this function so the Pygame library can initialize itself
         pygame.init()
@@ -229,7 +235,7 @@ class PacMan:
         self.clock = pygame.time.Clock()
 
         pygame.font.init()
-        self.font = pygame.font.Font("freesansbold.ttf", 24)
+        self.font = pygame.font.Font("resources/freesansbold.ttf", 24)
 
         # default locations for Pacman and monsters
         self.w = 303 - 16  # Width
@@ -249,25 +255,25 @@ class PacMan:
         self.gate = setup_gate(self.all_sprites_list)
 
         # Create the player paddle object
-        self.pacman = Player(self.w, self.p_h, "images/Trollman.png")
+        self.pacman = Player(self.w, self.p_h, "resources/images/Trollman.png")
         self.all_sprites_list.add(self.pacman)
         self.pacman_collide.add(self.pacman)
 
-        self.blinky = Ghost(self.w, self.b_h, "images/Blinky.png", pacman_utils.blinky_directions, False)
+        self.blinky = Ghost(self.w, self.b_h, "resources/images/Blinky.png", pacman_utils.blinky_directions, False)
         self.monster_list.add(self.blinky)
         self.all_sprites_list.add(self.blinky)
 
-        self.pinky = Ghost(self.w, self.m_h, "images/Pinky.png", pacman_utils.pinky_directions, False)
+        self.pinky = Ghost(self.w, self.m_h, "resources/images/Pinky.png", pacman_utils.pinky_directions, False)
         self.monster_list.add(self.pinky)
         self.all_sprites_list.add(self.pinky)
-
-        self.inky = Ghost(self.i_w, self.m_h, "images/Inky.png", pacman_utils.inky_directions, False)
-        self.monster_list.add(self.inky)
-        self.all_sprites_list.add(self.inky)
-
-        self.clyde = Ghost(self.c_w, self.m_h, "images/Clyde.png", pacman_utils.clyde_directions, "clyde")
-        self.monster_list.add(self.clyde)
-        self.all_sprites_list.add(self.clyde)
+        #
+        # self.inky = Ghost(self.i_w, self.m_h, "resources/images/Inky.png", pacman_utils.inky_directions, False)
+        # self.monster_list.add(self.inky)
+        # self.all_sprites_list.add(self.inky)
+        #
+        # self.clyde = Ghost(self.c_w, self.m_h, "resources/images/Clyde.png", pacman_utils.clyde_directions, "clyde")
+        # self.monster_list.add(self.clyde)
+        # self.all_sprites_list.add(self.clyde)
 
         self.bll = 0
         self.score = 0
@@ -276,7 +282,7 @@ class PacMan:
 
         pygame.display.set_icon(self.trollIcon)
         pygame.mixer.init()
-        pygame.mixer.music.load('pacman.mp3')
+        pygame.mixer.music.load('resources/audio/pacman.mp3')
         pygame.mixer.music.play(-1, 0.0)
 
         # Draw the grid
@@ -307,27 +313,36 @@ class PacMan:
     def next_step(self, action):
 
         # 奖励机制
-        reward = 0.1
+        reward = 0.3
 
         # 游戏结束标识
-        game_over = False
+        game_state = False
 
         # ALL EVENT PROCESSING SHOULD GO BELOW THIS COMMENT
         if action == pacman_utils.PacManActions.LEFT:
             self.pacman.reset_speed(-30, 0)
+            print("move LEFT")
         if action == pacman_utils.PacManActions.RIGHT:
             self.pacman.reset_speed(30, 0)
+            print("move RIGHT")
         if action == pacman_utils.PacManActions.UP:
             self.pacman.reset_speed(0, -30)
+            print("move UP")
         if action == pacman_utils.PacManActions.DOWN:
             self.pacman.reset_speed(0, 30)
+            print("move DOWN")
         if action == pacman_utils.PacManActions.NOTHING:
             self.pacman.reset_speed(0, 0)
+            print("move NOTHING")
+            reward = 0
 
         # ALL EVENT PROCESSING SHOULD GO ABOVE THIS COMMENT
 
         # ALL GAME LOGIC SHOULD GO BELOW THIS COMMENT
-        self.pacman.update(self.wall_list, self.gate)
+        hits = self.pacman.update(self.wall_list, self.gate)
+        if hits:
+            print("OH. hits wall, reward change to -0.2!")
+            reward = -0.2
 
         self.pinky.change_speed()
         self.pinky.change_speed(True)
@@ -337,13 +352,13 @@ class PacMan:
         self.blinky.change_speed(True)
         self.blinky.update(self.wall_list, False)
 
-        self.inky.change_speed()
-        self.inky.change_speed(True)
-        self.inky.update(self.wall_list, False)
-
-        self.clyde.change_speed()
-        self.clyde.change_speed(True)
-        self.clyde.update(self.wall_list, False)
+        # self.inky.change_speed()
+        # self.inky.change_speed(True)
+        # self.inky.update(self.wall_list, False)
+        #
+        # self.clyde.change_speed()
+        # self.clyde.change_speed(True)
+        # self.clyde.update(self.wall_list, False)
 
         # See if the Pacman block has collided with anything.
         blocks_hit_list = pygame.sprite.spritecollide(self.pacman, self.block_list, True)
@@ -354,7 +369,8 @@ class PacMan:
             self.score += get_score
             # 吃到豆子reward增加
             if get_score > 0:
-                reward = 1
+                print("Yeah. eat bean, reward change to 1!")
+                reward = 1.2
 
         # ALL GAME LOGIC SHOULD GO ABOVE THIS COMMENT
         # ALL CODE TO DRAW SHOULD GO BELOW THIS COMMENT
@@ -365,24 +381,28 @@ class PacMan:
         self.all_sprites_list.draw(self.screen)
         self.monster_list.draw(self.screen)
 
-        text = self.font.render("Score: "+str(self.score)+"/"+str(self.bll), True, red)
-        self.screen.blit(text, [10, 10])
+        # 隐藏分数板, 影响识别
+        # text = self.font.render("Score: "+str(self.score)+"/"+str(self.bll), True, red)
+        # self.screen.blit(text, [10, 10])
 
         image_data = pygame.surfarray.array3d(pygame.display.get_surface())
 
         if self.score == self.bll:
-            game_over = True
+            game_state = True
 
         monster_hit_list = pygame.sprite.spritecollide(self.pacman, self.monster_list, False)
 
         if monster_hit_list:
             # 碰到怪物, reward降低, 游戏结束
-            reward = -1
-            game_over = True
+            print("Woo. killed by monster. reward change to -1!")
+            reward = -5
+            game_state = True
+            self.__init__()
+            self.start_game()
 
         # ALL CODE TO DRAW SHOULD GO ABOVE THIS COMMENT
         pygame.display.flip()
 
         self.clock.tick(10)
 
-        return game_over, image_data, reward
+        return game_state, image_data, reward
